@@ -1,0 +1,1816 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>BlockWorld Online - Multiplayer</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;700&display=swap');
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            overflow: hidden; 
+            font-family: 'Nunito', sans-serif; 
+            touch-action: none;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        
+        #game-container { width: 100vw; height: 100vh; }
+        
+        .ui-panel {
+            background: linear-gradient(180deg, rgba(30,30,40,0.95) 0%, rgba(20,20,30,0.95) 100%);
+            border: 2px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+        }
+        
+        .roblox-btn {
+            background: linear-gradient(180deg, #00b06f 0%, #00875a 100%);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-weight: bold;
+            padding: 10px 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 4px 0 #005c3d;
+        }
+        
+        .roblox-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 0 #005c3d;
+        }
+        
+        .roblox-btn:active {
+            transform: translateY(2px);
+            box-shadow: 0 2px 0 #005c3d;
+        }
+        
+        .roblox-btn-blue {
+            background: linear-gradient(180deg, #3498db 0%, #2980b9 100%);
+            box-shadow: 0 4px 0 #1a5276;
+        }
+        
+        .roblox-btn-purple {
+            background: linear-gradient(180deg, #9b59b6 0%, #8e44ad 100%);
+            box-shadow: 0 4px 0 #6c3483;
+        }
+        
+        .roblox-btn-yellow {
+            background: linear-gradient(180deg, #f39c12 0%, #d68910 100%);
+            box-shadow: 0 4px 0 #b9770e;
+        }
+        
+        .roblox-btn-red {
+            background: linear-gradient(180deg, #e74c3c 0%, #c0392b 100%);
+            box-shadow: 0 4px 0 #962d22;
+        }
+        
+        .loading-screen {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+        }
+        
+        .loading-bar {
+            background: linear-gradient(90deg, #00b06f, #00d9ff, #00b06f);
+            background-size: 200% 100%;
+            animation: loading 1.5s ease infinite;
+        }
+        
+        @keyframes loading {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        
+        .pulse {
+            animation: pulse 2s ease infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .modal-overlay {
+            background: rgba(0,0,0,0.8);
+            backdrop-filter: blur(5px);
+        }
+        
+        .item-card {
+            background: linear-gradient(180deg, rgba(50,50,60,0.9) 0%, rgba(40,40,50,0.9) 100%);
+            border: 2px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        
+        .item-card:hover {
+            transform: scale(1.05);
+            border-color: rgba(255,255,255,0.3);
+        }
+        
+        .item-card.selected {
+            border-color: #00b06f;
+            box-shadow: 0 0 20px rgba(0,176,111,0.5);
+        }
+        
+        .tab-btn {
+            transition: all 0.3s;
+        }
+        
+        .tab-btn.active {
+            background: linear-gradient(180deg, #00b06f 0%, #00875a 100%);
+        }
+        
+        @keyframes bounceIn {
+            0% { transform: scale(0.5); opacity: 0; }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        
+        .bounce-in {
+            animation: bounceIn 0.4s ease;
+        }
+        
+        /* Mobile Controls */
+        #mobile-controls {
+            display: none;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            pointer-events: none;
+        }
+        
+        #joystick-container {
+            position: fixed;
+            bottom: 30px;
+            left: 20px;
+            width: 150px;
+            height: 150px;
+            pointer-events: auto;
+            z-index: 1001;
+        }
+        
+        #joystick-base {
+            position: absolute;
+            width: 150px;
+            height: 150px;
+            background: rgba(0,0,0,0.5);
+            border: 4px solid rgba(255,255,255,0.6);
+            border-radius: 50%;
+            box-sizing: border-box;
+        }
+        
+        #joystick-stick {
+            position: absolute;
+            width: 70px;
+            height: 70px;
+            background: linear-gradient(180deg, #ffffff 0%, #cccccc 100%);
+            border: 4px solid #ffffff;
+            border-radius: 50%;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            box-sizing: border-box;
+        }
+        
+        #jump-button {
+            position: fixed;
+            bottom: 30px;
+            right: 20px;
+            width: 110px;
+            height: 110px;
+            background: linear-gradient(180deg, #ff4d4d 0%, #cc0000 100%);
+            border: 6px solid #ffffff;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            color: white;
+            font-weight: 900;
+            box-shadow: 0 8px 0 #800000, 0 10px 30px rgba(0,0,0,0.6);
+            pointer-events: auto;
+            z-index: 2000;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: none; /* Bloqueia scroll do navegador */
+            user-select: none;
+        }
+        
+        #jump-button:active {
+            transform: translateY(4px);
+            box-shadow: 0 2px 0 #962d22, 0 2px 10px rgba(0,0,0,0.3);
+        }
+        
+        #jump-button span {
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+            pointer-events: none;
+        }
+        
+        /* Mobile Menu Buttons */
+        #mobile-menu-buttons {
+            position: fixed;
+            bottom: 150px;
+            right: 25px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            pointer-events: auto;
+            z-index: 1001;
+        }
+        
+        .mobile-menu-btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            border: 4px solid rgba(255,255,255,0.5);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+        }
+        
+        /* Desktop hidden on mobile */
+        @media (max-width: 768px) {
+            #controls-info, #menu-buttons, #players-list {
+                display: none !important;
+            }
+            
+            #top-bar {
+                padding: 8px !important;
+            }
+            
+            #top-bar > div {
+                transform: scale(0.8);
+            }
+            
+            #mobile-controls {
+                display: block !important;
+            }
+            
+            #crosshair {
+                display: none !important;
+            }
+        }
+        
+        /* Always show mobile controls on touch devices */
+        @media (pointer: coarse) {
+            #mobile-controls {
+                display: block !important;
+            }
+            
+            #controls-info, #menu-buttons, #players-list {
+                display: none !important;
+            }
+            
+            #crosshair {
+                display: none !important;
+            }
+        }
+        
+        .force-mobile #mobile-controls {
+            display: block !important;
+        }
+        
+        #mobile-mode-status {
+            color: #00d9ff;
+        }
+    </style>
+</head>
+<body class="bg-gray-900">
+    <!-- Loading Screen -->
+    <div id="loading-screen" class="loading-screen fixed inset-0 z-50 flex flex-col items-center justify-center">
+        <div class="text-center">
+            <h1 class="text-5xl font-bold text-white mb-2" style="font-family: 'Fredoka One', cursive;">
+                🎮 BlockWorld
+            </h1>
+            <p class="text-cyan-400 text-xl mb-8">ONLINE MULTIPLAYER</p>
+            
+            <div class="w-80 h-3 bg-gray-700 rounded-full overflow-hidden mb-4">
+                <div id="load-bar" class="loading-bar h-full rounded-full transition-all duration-300" style="width: 0%"></div>
+            </div>
+            <p id="load-text" class="text-gray-400">Conectando ao servidor...</p>
+        </div>
+        
+        <div class="absolute bottom-10 text-gray-500 text-sm text-center px-4">
+            <p class="hidden md:block">Use WASD para mover • ESPAÇO para pular • MOUSE para olhar</p>
+            <p class="md:hidden">Use o analógico para mover • Arraste para olhar</p>
+        </div>
+    </div>
+
+    <!-- Game Container -->
+    <div id="game-container"></div>
+
+    <!-- Top Bar -->
+    <div id="top-bar" class="fixed top-0 left-0 right-0 p-4 flex justify-between items-start z-20 opacity-0 transition-opacity duration-500">
+        <div class="flex items-center gap-4">
+            <div class="ui-panel px-4 py-2 flex items-center gap-2">
+                <span class="text-2xl">🎮</span>
+                <span class="text-white font-bold hidden sm:inline" style="font-family: 'Fredoka One', cursive;">BlockWorld</span>
+            </div>
+            <button onclick="toggleMobileMode()" class="ui-panel px-4 py-2 text-white font-bold text-xs hover:bg-white/10 transition-colors">
+                📱 Modo Mobile: <span id="mobile-mode-status">Auto</span>
+            </button>
+        </div>
+        
+        <div class="ui-panel px-4 py-2 flex items-center gap-3 hidden sm:flex">
+            <div class="flex items-center gap-2">
+                <div class="w-3 h-3 bg-green-500 rounded-full pulse"></div>
+                <span class="text-green-400 font-bold" id="player-count">1</span>
+                <span class="text-gray-400">online</span>
+            </div>
+        </div>
+        
+        <div class="flex gap-2">
+            <div class="ui-panel px-3 py-2 flex items-center gap-2">
+                <span class="text-yellow-400 text-lg">🪙</span>
+                <span class="text-yellow-400 font-bold text-sm" id="coins">1,250</span>
+            </div>
+            <div class="ui-panel px-3 py-2 flex items-center gap-2">
+                <span class="text-cyan-400 text-lg">💎</span>
+                <span class="text-cyan-400 font-bold text-sm" id="gems">50</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Menu Buttons (Desktop) -->
+    <div id="menu-buttons" class="fixed top-20 left-4 flex flex-col gap-2 z-20 opacity-0 transition-opacity duration-500">
+        <button onclick="openWardrobe()" class="roblox-btn roblox-btn-purple flex items-center gap-2">
+            <span>👕</span> Guarda-Roupa
+        </button>
+        <button onclick="openShop()" class="roblox-btn roblox-btn-yellow flex items-center gap-2">
+            <span>🛒</span> Loja
+        </button>
+        <button onclick="openAdminLogin()" class="roblox-btn roblox-btn-red flex items-center gap-2">
+            <span>⚙️</span> Admin
+        </button>
+    </div>
+
+    <!-- Players List (Desktop) -->
+    <div id="players-list" class="fixed top-20 right-4 ui-panel p-4 z-20 opacity-0 transition-opacity duration-500 w-64">
+        <h3 class="text-white font-bold mb-3 flex items-center gap-2">
+            <span>👥</span> Jogadores
+        </h3>
+        <div id="players-container" class="space-y-2 max-h-48 overflow-y-auto"></div>
+    </div>
+
+    <!-- Controls Info (Desktop) -->
+    <div id="controls-info" class="fixed bottom-4 right-4 ui-panel p-4 z-20 opacity-0 transition-opacity duration-500">
+        <h3 class="text-white font-bold mb-2">🎮 Controles</h3>
+        <div class="text-gray-400 text-sm space-y-1">
+            <p><span class="text-cyan-400">WASD</span> - Mover</p>
+            <p><span class="text-cyan-400">ESPAÇO</span> - Pular</p>
+            <p><span class="text-cyan-400">MOUSE</span> - Olhar</p>
+            <p><span class="text-cyan-400">G</span> - Guarda-Roupa</p>
+            <p><span class="text-cyan-400">L</span> - Loja</p>
+            <p><span class="text-cyan-400">P</span> - Admin</p>
+        </div>
+    </div>
+
+    <!-- Crosshair (Desktop) -->
+    <div id="crosshair" class="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 opacity-0 transition-opacity duration-500">
+        <div class="w-4 h-4 border-2 border-white rounded-full opacity-50"></div>
+    </div>
+
+    <!-- Version Number -->
+    <div id="version-number" class="fixed bottom-4 left-4 z-20 opacity-0 transition-opacity duration-500">
+        <div class="ui-panel px-3 py-1">
+            <span class="text-gray-400 text-sm">v2.2.0</span>
+        </div>
+    </div>
+    
+    <!-- FPS Counter -->
+    <div id="fps-counter" class="fixed top-20 left-1/2 transform -translate-x-1/2 z-30 hidden">
+        <div class="ui-panel px-4 py-2">
+            <span class="text-green-400 font-bold" id="fps-value">60 FPS</span>
+        </div>
+    </div>
+
+    <!-- Mobile Controls -->
+    <div id="mobile-controls">
+        <div id="joystick-container">
+            <div id="joystick-base">
+                <div id="joystick-stick"></div>
+            </div>
+        </div>
+        
+        <div id="mobile-menu-buttons">
+            <button class="mobile-menu-btn" style="background: linear-gradient(180deg, #e74c3c 0%, #c0392b 100%);" id="btn-admin">
+                ⚙️
+            </button>
+            <button class="mobile-menu-btn" style="background: linear-gradient(180deg, #9b59b6 0%, #8e44ad 100%);" id="btn-wardrobe">
+                👕
+            </button>
+            <button class="mobile-menu-btn" style="background: linear-gradient(180deg, #f39c12 0%, #d68910 100%);" id="btn-shop">
+                🛒
+            </button>
+        </div>
+        
+        <button id="jump-button" type="button">
+            <span>PULAR</span>
+        </button>
+    </div>
+
+    <!-- Admin Login Modal -->
+    <div id="admin-login-modal" class="fixed inset-0 z-50 hidden items-center justify-center modal-overlay p-4">
+        <div class="ui-panel w-full max-w-md bounce-in overflow-hidden">
+            <div class="p-4 border-b border-gray-700 flex justify-between items-center" style="background: linear-gradient(180deg, #c0392b 0%, #962d22 100%);">
+                <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                    🔐 Login Admin
+                </h2>
+                <button onclick="closeAdminLogin()" class="text-white hover:text-gray-300 text-2xl">&times;</button>
+            </div>
+            <div class="p-6">
+                <p class="text-gray-400 mb-4">Digite a senha de administrador:</p>
+                <input type="password" id="admin-password" placeholder="Senha..." 
+                    class="w-full bg-gray-800 text-white px-4 py-3 rounded-lg outline-none focus:ring-2 focus:ring-red-500 mb-4">
+                <p id="admin-error" class="text-red-500 text-sm mb-4 hidden">Senha incorreta!</p>
+                <button onclick="checkAdminPassword()" class="roblox-btn roblox-btn-red w-full">Entrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Panel Modal -->
+    <div id="admin-panel-modal" class="fixed inset-0 z-50 hidden items-center justify-center modal-overlay p-4 overflow-y-auto">
+        <div class="ui-panel w-full max-w-2xl bounce-in overflow-hidden my-4">
+            <div class="p-4 border-b border-gray-700 flex justify-between items-center" style="background: linear-gradient(180deg, #c0392b 0%, #962d22 100%);">
+                <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                    ⚙️ Painel Admin
+                </h2>
+                <button onclick="closeAdminPanel()" class="text-white hover:text-gray-300 text-2xl">&times;</button>
+            </div>
+            <div class="p-4 space-y-4 max-h-[70vh] overflow-y-auto">
+                <!-- Recursos -->
+                <div class="bg-gray-800/50 p-3 rounded-lg">
+                    <h3 class="text-yellow-400 font-bold mb-3 text-sm">💰 RECURSOS</h3>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
+                        <button onclick="adminAddCoins(1000)" class="roblox-btn roblox-btn-yellow text-xs py-2">💰 +1K Moedas</button>
+                        <button onclick="adminAddCoins(10000)" class="roblox-btn roblox-btn-yellow text-xs py-2">💰 +10K Moedas</button>
+                        <button onclick="adminAddGems(100)" class="roblox-btn roblox-btn-blue text-xs py-2">💎 +100 Gemas</button>
+                        <button onclick="adminAddGems(1000)" class="roblox-btn roblox-btn-blue text-xs py-2">💎 +1K Gemas</button>
+                    </div>
+                    <button onclick="adminInfiniteCoins()" id="infinite-btn" class="roblox-btn roblox-btn-yellow w-full mt-2 text-xs py-2">∞ Moedas Infinitas: OFF</button>
+                </div>
+                
+                <!-- Poderes do Jogador -->
+                <div class="bg-gray-800/50 p-3 rounded-lg">
+                    <h3 class="text-green-400 font-bold mb-3 text-sm">⚡ PODERES</h3>
+                    <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
+                        <button onclick="adminToggleFly()" id="fly-btn" class="roblox-btn text-xs py-2">🦅 Voar: OFF</button>
+                        <button onclick="adminToggleSpeed()" id="speed-btn" class="roblox-btn text-xs py-2">⚡ Velocidade: 1x</button>
+                        <button onclick="adminToggleSuperJump()" id="jump-btn" class="roblox-btn text-xs py-2">🚀 Super Pulo: OFF</button>
+                        <button onclick="adminToggleGodMode()" id="god-btn" class="roblox-btn text-xs py-2">👑 Modo Deus: OFF</button>
+                        <button onclick="adminToggleInvisible()" id="invisible-btn" class="roblox-btn text-xs py-2">👻 Invisível: OFF</button>
+                        <button onclick="adminToggleGiant()" id="giant-btn" class="roblox-btn text-xs py-2">🗿 Gigante: OFF</button>
+                        <button onclick="adminToggleMini()" id="mini-btn" class="roblox-btn text-xs py-2">🐜 Mini: OFF</button>
+                        <button onclick="adminToggleNoClip()" id="noclip-btn" class="roblox-btn text-xs py-2">👤 NoClip: OFF</button>
+                        <button onclick="adminToggleRainbow()" id="rainbow-btn" class="roblox-btn text-xs py-2">🌈 Arco-Íris: OFF</button>
+                    </div>
+                </div>
+                
+                <!-- Itens -->
+                <div class="bg-gray-800/50 p-3 rounded-lg">
+                    <h3 class="text-purple-400 font-bold mb-3 text-sm">👕 ITENS</h3>
+                    <button onclick="adminUnlockAll()" class="roblox-btn roblox-btn-purple w-full text-xs py-2">🔓 Desbloquear Todas Roupas</button>
+                </div>
+                
+                <!-- Mundo -->
+                <div class="bg-gray-800/50 p-3 rounded-lg">
+                    <h3 class="text-cyan-400 font-bold mb-3 text-sm">🌍 MUNDO</h3>
+                    <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
+                        <button onclick="adminSpawnCoins()" class="roblox-btn roblox-btn-yellow text-xs py-2">🪙 Spawnar 50 Moedas</button>
+                        <button onclick="adminToggleDayNight()" id="daynight-btn" class="roblox-btn roblox-btn-blue text-xs py-2">🌙 Noite: OFF</button>
+                        <button onclick="adminToggleGravity()" id="gravity-btn" class="roblox-btn text-xs py-2">🌙 Baixa Gravidade: OFF</button>
+                        <button onclick="adminToggleFog()" id="fog-btn" class="roblox-btn text-xs py-2">🌫️ Neblina: ON</button>
+                        <button onclick="adminChangeSkyColor()" id="sky-btn" class="roblox-btn roblox-btn-purple text-xs py-2">🎨 Mudar Cor do Céu</button>
+                        <button onclick="adminSpawnBuilding()" class="roblox-btn text-xs py-2">🏠 Spawnar Prédio</button>
+                        <button onclick="adminSpawnTree()" class="roblox-btn text-xs py-2">🌲 Spawnar Árvore</button>
+                        <button onclick="adminSpawnPlatform()" class="roblox-btn roblox-btn-blue text-xs py-2">📦 Spawnar Plataforma</button>
+                        <button onclick="adminClearWorld()" class="roblox-btn roblox-btn-red text-xs py-2">💥 Limpar Objetos</button>
+                    </div>
+                </div>
+                
+                <!-- Teleporte -->
+                <div class="bg-gray-800/50 p-3 rounded-lg">
+                    <h3 class="text-pink-400 font-bold mb-3 text-sm">🚀 TELEPORTE</h3>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
+                        <button onclick="adminTeleport(0, 5, 0)" class="roblox-btn text-xs py-2">📍 Spawn</button>
+                        <button onclick="adminTeleport(0, 50, 0)" class="roblox-btn text-xs py-2">☁️ Céu</button>
+                        <button onclick="adminTeleport(-30, 25, -30)" class="roblox-btn text-xs py-2">🏢 Prédio 1</button>
+                        <button onclick="adminTeleport(30, 20, -30)" class="roblox-btn text-xs py-2">🏢 Prédio 2</button>
+                        <button onclick="adminTeleport(-30, 30, 30)" class="roblox-btn text-xs py-2">🏢 Prédio 3</button>
+                        <button onclick="adminTeleport(30, 23, 30)" class="roblox-btn text-xs py-2">🏢 Prédio 4</button>
+                        <button onclick="adminTeleport(-90, 5, -90)" class="roblox-btn text-xs py-2">🌲 Canto 1</button>
+                        <button onclick="adminTeleport(90, 5, 90)" class="roblox-btn text-xs py-2">🌲 Canto 2</button>
+                    </div>
+                    <div class="mt-2 flex gap-2">
+                        <input type="number" id="tp-x" placeholder="X" class="bg-gray-700 text-white px-2 py-1 rounded w-1/3 text-xs">
+                        <input type="number" id="tp-y" placeholder="Y" class="bg-gray-700 text-white px-2 py-1 rounded w-1/3 text-xs">
+                        <input type="number" id="tp-z" placeholder="Z" class="bg-gray-700 text-white px-2 py-1 rounded w-1/3 text-xs">
+                        <button onclick="adminTeleportCustom()" class="roblox-btn roblox-btn-purple text-xs py-1 px-3">IR</button>
+                    </div>
+                </div>
+                
+                <!-- Efeitos Especiais -->
+                <div class="bg-gray-800/50 p-3 rounded-lg">
+                    <h3 class="text-orange-400 font-bold mb-3 text-sm">✨ EFEITOS ESPECIAIS</h3>
+                    <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
+                        <button onclick="adminExplosion()" class="roblox-btn roblox-btn-red text-xs py-2">💥 Explosão</button>
+                        <button onclick="adminCoinRain()" class="roblox-btn roblox-btn-yellow text-xs py-2">🌧️ Chuva de Moedas</button>
+                        <button onclick="adminFireworks()" class="roblox-btn roblox-btn-purple text-xs py-2">🎆 Fogos de Artifício</button>
+                        <button onclick="adminToggleMatrix()" id="matrix-btn" class="roblox-btn text-xs py-2">🕶️ Matrix: OFF</button>
+                        <button onclick="adminToggleParty()" id="party-btn" class="roblox-btn text-xs py-2">🎉 Modo Festa: OFF</button>
+                        <button onclick="adminToggleEarthquake()" id="earthquake-btn" class="roblox-btn text-xs py-2">🌋 Terremoto: OFF</button>
+                    </div>
+                </div>
+                
+                <!-- Sistema -->
+                <div class="bg-gray-800/50 p-3 rounded-lg">
+                    <h3 class="text-red-400 font-bold mb-3 text-sm">⚠️ SISTEMA</h3>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="adminSaveGame()" class="roblox-btn text-xs py-2">💾 Salvar Jogo</button>
+                        <button onclick="adminLoadGame()" class="roblox-btn text-xs py-2">📂 Carregar Jogo</button>
+                        <button onclick="adminScreenshot()" class="roblox-btn roblox-btn-blue text-xs py-2">📸 Screenshot</button>
+                        <button onclick="adminToggleFPS()" id="fps-btn" class="roblox-btn text-xs py-2">📊 FPS: OFF</button>
+                    </div>
+                    <button onclick="adminReset()" class="roblox-btn roblox-btn-red w-full mt-2 text-xs py-2">🗑️ RESETAR TUDO</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Wardrobe Modal -->
+    <div id="wardrobe-modal" class="fixed inset-0 z-50 hidden items-center justify-center modal-overlay p-4">
+        <div class="ui-panel w-full max-w-[800px] max-h-[80vh] bounce-in overflow-hidden">
+            <div class="p-4 border-b border-gray-700 flex justify-between items-center">
+                <h2 class="text-xl md:text-2xl font-bold text-white flex items-center gap-2" style="font-family: 'Fredoka One', cursive;">
+                    👕 Guarda-Roupa
+                </h2>
+                <button onclick="closeWardrobe()" class="text-gray-400 hover:text-white text-2xl">&times;</button>
+            </div>
+            <div class="p-2 md:p-4 border-b border-gray-700 flex gap-1 md:gap-2 overflow-x-auto">
+                <button onclick="switchWardrobeTab('body')" id="tab-body" class="tab-btn active px-3 py-2 rounded-lg text-white font-bold text-sm whitespace-nowrap">
+                    👕 Camisetas
+                </button>
+                <button onclick="switchWardrobeTab('legs')" id="tab-legs" class="tab-btn px-3 py-2 rounded-lg text-gray-400 font-bold bg-gray-800 text-sm whitespace-nowrap">
+                    👖 Calças
+                </button>
+                <button onclick="switchWardrobeTab('head')" id="tab-head" class="tab-btn px-3 py-2 rounded-lg text-gray-400 font-bold bg-gray-800 text-sm whitespace-nowrap">
+                    😊 Pele
+                </button>
+                <button onclick="switchWardrobeTab('accessories')" id="tab-accessories" class="tab-btn px-3 py-2 rounded-lg text-gray-400 font-bold bg-gray-800 text-sm whitespace-nowrap">
+                    🎩 Acessórios
+                </button>
+            </div>
+            <div class="p-4 overflow-y-auto max-h-[300px] md:max-h-[400px]">
+                <div id="wardrobe-items" class="grid grid-cols-3 md:grid-cols-4 gap-3 md:gap-4"></div>
+            </div>
+            <div class="p-4 border-t border-gray-700 flex justify-end">
+                <button onclick="closeWardrobe()" class="roblox-btn">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Shop Modal -->
+    <div id="shop-modal" class="fixed inset-0 z-50 hidden items-center justify-center modal-overlay p-4">
+        <div class="ui-panel w-full max-w-[900px] max-h-[85vh] bounce-in overflow-hidden">
+            <div class="p-4 border-b border-gray-700 flex justify-between items-center">
+                <h2 class="text-xl md:text-2xl font-bold text-white flex items-center gap-2" style="font-family: 'Fredoka One', cursive;">
+                    🛒 Loja
+                </h2>
+                <div class="flex items-center gap-2 md:gap-4">
+                    <div class="flex items-center gap-1">
+                        <span class="text-yellow-400">🪙</span>
+                        <span class="text-yellow-400 font-bold text-sm" id="shop-coins">1,250</span>
+                    </div>
+                    <div class="flex items-center gap-1">
+                        <span class="text-cyan-400">💎</span>
+                        <span class="text-cyan-400 font-bold text-sm" id="shop-gems">50</span>
+                    </div>
+                    <button onclick="closeShop()" class="text-gray-400 hover:text-white text-2xl ml-2">&times;</button>
+                </div>
+            </div>
+            <div class="p-2 md:p-4 border-b border-gray-700 flex gap-1 md:gap-2 overflow-x-auto">
+                <button onclick="switchShopTab('body')" id="shop-tab-body" class="tab-btn active px-3 py-2 rounded-lg text-white font-bold text-sm whitespace-nowrap">
+                    👕 Camisetas
+                </button>
+                <button onclick="switchShopTab('legs')" id="shop-tab-legs" class="tab-btn px-3 py-2 rounded-lg text-gray-400 font-bold bg-gray-800 text-sm whitespace-nowrap">
+                    👖 Calças
+                </button>
+                <button onclick="switchShopTab('head')" id="shop-tab-head" class="tab-btn px-3 py-2 rounded-lg text-gray-400 font-bold bg-gray-800 text-sm whitespace-nowrap">
+                    😊 Pele
+                </button>
+                <button onclick="switchShopTab('accessories')" id="shop-tab-accessories" class="tab-btn px-3 py-2 rounded-lg text-gray-400 font-bold bg-gray-800 text-sm whitespace-nowrap">
+                    🎩 Acessórios
+                </button>
+            </div>
+            <div class="p-4 overflow-y-auto max-h-[300px] md:max-h-[400px]">
+                <div id="shop-items" class="grid grid-cols-3 md:grid-cols-4 gap-3 md:gap-4"></div>
+            </div>
+            <div class="p-4 border-t border-gray-700 flex justify-end">
+                <button onclick="closeShop()" class="roblox-btn">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Purchase Notification -->
+    <div id="purchase-notification" class="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-60 hidden">
+        <div class="ui-panel p-6 text-center bounce-in">
+            <div class="text-5xl mb-4">🎉</div>
+            <h3 class="text-xl font-bold text-white mb-2">Compra Realizada!</h3>
+            <p id="purchase-item-name" class="text-green-400"></p>
+        </div>
+    </div>
+
+    <script>
+        // Game State
+        let scene, camera, renderer, player, clock;
+        let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
+        let canJump = true;
+        let velocity = new THREE.Vector3();
+        let direction = new THREE.Vector3();
+        let isLocked = false;
+        let coins = 1250;
+        let gems = 50;
+        let modalOpen = false;
+        let isMobile = false;
+        
+        // Admin state
+        let flyMode = false;
+        let speedMultiplier = 1;
+        let superJump = false;
+        let godMode = false;
+        let invisibleMode = false;
+        let giantMode = false;
+        let miniMode = false;
+        let noClipMode = false;
+        let rainbowMode = false;
+        let nightMode = false;
+        let lowGravity = false;
+        let fogEnabled = true;
+        let matrixMode = false;
+        let partyMode = false;
+        let earthquakeMode = false;
+        let infiniteCoins = false;
+        let showFPS = false;
+        let skyColorIndex = 0;
+        const skyColors = [0x87CEEB, 0x1a1a2e, 0xff6b6b, 0x6b5b95, 0x88d8b0, 0xffcc5c, 0x2c3e50];
+        const ADMIN_PASSWORD = "RABLOX123";
+        
+        // Mobile controls state
+        let joystickActive = false;
+        let joystickData = { x: 0, y: 0 };
+        let cameraRotation = { x: 0, y: 0 };
+        
+        // Player appearance
+        let playerAppearance = {
+            body: 0x3498db,
+            legs: 0x2c3e50,
+            head: 0xffd93d,
+            accessory: null
+        };
+        
+        // Clothing items database
+        const clothingItems = {
+            body: [
+                { id: 'body_blue', name: 'Camiseta Azul', color: 0x3498db, price: 0, currency: 'coins', owned: true },
+                { id: 'body_red', name: 'Camiseta Vermelha', color: 0xe74c3c, price: 100, currency: 'coins', owned: false },
+                { id: 'body_green', name: 'Camiseta Verde', color: 0x27ae60, price: 100, currency: 'coins', owned: false },
+                { id: 'body_purple', name: 'Camiseta Roxa', color: 0x9b59b6, price: 150, currency: 'coins', owned: false },
+                { id: 'body_orange', name: 'Camiseta Laranja', color: 0xe67e22, price: 150, currency: 'coins', owned: false },
+                { id: 'body_pink', name: 'Camiseta Rosa', color: 0xff69b4, price: 200, currency: 'coins', owned: false },
+                { id: 'body_cyan', name: 'Camiseta Ciano', color: 0x00bcd4, price: 200, currency: 'coins', owned: false },
+                { id: 'body_gold', name: 'Camiseta Dourada', color: 0xffd700, price: 10, currency: 'gems', owned: false },
+            ],
+            legs: [
+                { id: 'legs_dark', name: 'Calça Escura', color: 0x2c3e50, price: 0, currency: 'coins', owned: true },
+                { id: 'legs_blue', name: 'Calça Jeans', color: 0x3498db, price: 100, currency: 'coins', owned: false },
+                { id: 'legs_black', name: 'Calça Preta', color: 0x1a1a1a, price: 150, currency: 'coins', owned: false },
+                { id: 'legs_brown', name: 'Calça Marrom', color: 0x8b4513, price: 100, currency: 'coins', owned: false },
+            ],
+            head: [
+                { id: 'head_yellow', name: 'Pele Amarela', color: 0xffd93d, price: 0, currency: 'coins', owned: true },
+                { id: 'head_pale', name: 'Pele Clara', color: 0xffe4c4, price: 50, currency: 'coins', owned: false },
+                { id: 'head_tan', name: 'Pele Bronzeada', color: 0xd2b48c, price: 50, currency: 'coins', owned: false },
+                { id: 'head_brown', name: 'Pele Morena', color: 0x8b4513, price: 50, currency: 'coins', owned: false },
+            ],
+            accessories: [
+                { id: 'acc_none', name: 'Sem Acessório', color: null, price: 0, currency: 'coins', owned: true },
+                { id: 'acc_hat_red', name: 'Chapéu Vermelho', color: 0xe74c3c, type: 'hat', price: 300, currency: 'coins', owned: false },
+                { id: 'acc_crown', name: 'Coroa Real', color: 0xffd700, type: 'crown', price: 50, currency: 'gems', owned: false },
+            ]
+        };
+        
+        let equippedItems = {
+            body: 'body_blue',
+            legs: 'legs_dark',
+            head: 'head_yellow',
+            accessory: 'acc_none'
+        };
+        
+        let currentWardrobeTab = 'body';
+        let currentShopTab = 'body';
+
+        // Admin Functions
+        function openAdminLogin() {
+            modalOpen = true;
+            document.exitPointerLock();
+            document.getElementById('admin-login-modal').style.display = 'flex';
+            document.getElementById('admin-password').value = '';
+            document.getElementById('admin-error').classList.add('hidden');
+        }
+        
+        function closeAdminLogin() {
+            modalOpen = false;
+            document.getElementById('admin-login-modal').style.display = 'none';
+        }
+        
+        function checkAdminPassword() {
+            const password = document.getElementById('admin-password').value;
+            if (password === ADMIN_PASSWORD) {
+                closeAdminLogin();
+                openAdminPanel();
+            } else {
+                document.getElementById('admin-error').classList.remove('hidden');
+            }
+        }
+        
+        function openAdminPanel() {
+            modalOpen = true;
+            document.getElementById('admin-panel-modal').style.display = 'flex';
+        }
+        
+        function closeAdminPanel() {
+            modalOpen = false;
+            document.getElementById('admin-panel-modal').style.display = 'none';
+        }
+        
+        function adminAddCoins(amount = 1000) {
+            coins += amount;
+            updateCurrencyDisplay();
+        }
+        
+        function adminAddGems(amount = 100) {
+            gems += amount;
+            updateCurrencyDisplay();
+        }
+        
+        function adminInfiniteCoins() {
+            infiniteCoins = !infiniteCoins;
+            if (infiniteCoins) { coins = 999999; gems = 9999; }
+            updateCurrencyDisplay();
+            document.getElementById('infinite-btn').textContent = infiniteCoins ? '∞ Moedas Infinitas: ON' : '∞ Moedas Infinitas: OFF';
+        }
+        
+        function adminUnlockAll() {
+            Object.keys(clothingItems).forEach(category => {
+                clothingItems[category].forEach(item => { item.owned = true; });
+            });
+            alert('Todas as roupas desbloqueadas!');
+        }
+        
+        function adminToggleFly() {
+            flyMode = !flyMode;
+            document.getElementById('fly-btn').textContent = flyMode ? '🦅 Voar: ON' : '🦅 Voar: OFF';
+        }
+        
+        function adminToggleSpeed() {
+            const speeds = [1, 2, 3, 5, 10];
+            const idx = speeds.indexOf(speedMultiplier);
+            speedMultiplier = speeds[(idx + 1) % speeds.length];
+            document.getElementById('speed-btn').textContent = '⚡ Velocidade: ' + speedMultiplier + 'x';
+        }
+        
+        function adminToggleSuperJump() {
+            superJump = !superJump;
+            document.getElementById('jump-btn').textContent = superJump ? '🚀 Super Pulo: ON' : '🚀 Super Pulo: OFF';
+        }
+        
+        function adminToggleGodMode() {
+            godMode = !godMode;
+            document.getElementById('god-btn').textContent = godMode ? '👑 Modo Deus: ON' : '👑 Modo Deus: OFF';
+        }
+        
+        function adminToggleInvisible() {
+            invisibleMode = !invisibleMode;
+            player.traverse(child => {
+                if (child.material) {
+                    child.material.opacity = invisibleMode ? 0.3 : 1;
+                    child.material.transparent = invisibleMode;
+                }
+            });
+            document.getElementById('invisible-btn').textContent = invisibleMode ? '👻 Invisível: ON' : '👻 Invisível: OFF';
+        }
+        
+        function adminToggleGiant() {
+            if (miniMode) { miniMode = false; document.getElementById('mini-btn').textContent = '🐜 Mini: OFF'; }
+            giantMode = !giantMode;
+            player.scale.set(giantMode ? 2 : 1, giantMode ? 2 : 1, giantMode ? 2 : 1);
+            document.getElementById('giant-btn').textContent = giantMode ? '🗿 Gigante: ON' : '🗿 Gigante: OFF';
+        }
+        
+        function adminToggleMini() {
+            if (giantMode) { giantMode = false; document.getElementById('giant-btn').textContent = '🗿 Gigante: OFF'; }
+            miniMode = !miniMode;
+            player.scale.set(miniMode ? 0.5 : 1, miniMode ? 0.5 : 1, miniMode ? 0.5 : 1);
+            document.getElementById('mini-btn').textContent = miniMode ? '🐜 Mini: ON' : '🐜 Mini: OFF';
+        }
+        
+        function adminToggleNoClip() {
+            noClipMode = !noClipMode;
+            document.getElementById('noclip-btn').textContent = noClipMode ? '👤 NoClip: ON' : '👤 NoClip: OFF';
+        }
+        
+        function adminToggleRainbow() {
+            rainbowMode = !rainbowMode;
+            document.getElementById('rainbow-btn').textContent = rainbowMode ? '🌈 Arco-Íris: ON' : '🌈 Arco-Íris: OFF';
+        }
+        
+        function adminSpawnCoins() {
+            for (let i = 0; i < 50; i++) {
+                createCoin((Math.random() - 0.5) * 100, 2 + Math.random() * 5, (Math.random() - 0.5) * 100);
+            }
+        }
+        
+        function adminToggleDayNight() {
+            nightMode = !nightMode;
+            scene.background = new THREE.Color(nightMode ? 0x1a1a2e : 0x87CEEB);
+            scene.fog = new THREE.Fog(nightMode ? 0x1a1a2e : 0x87CEEB, 50, 200);
+            document.getElementById('daynight-btn').textContent = nightMode ? '🌙 Noite: ON' : '🌙 Noite: OFF';
+        }
+        
+        function adminToggleGravity() {
+            lowGravity = !lowGravity;
+            document.getElementById('gravity-btn').textContent = lowGravity ? '🌙 Baixa Gravidade: ON' : '🌙 Baixa Gravidade: OFF';
+        }
+        
+        function adminToggleFog() {
+            fogEnabled = !fogEnabled;
+            scene.fog = fogEnabled ? new THREE.Fog(nightMode ? 0x1a1a2e : 0x87CEEB, 50, 200) : null;
+            document.getElementById('fog-btn').textContent = fogEnabled ? '🌫️ Neblina: ON' : '🌫️ Neblina: OFF';
+        }
+        
+        function adminChangeSkyColor() {
+            skyColorIndex = (skyColorIndex + 1) % skyColors.length;
+            scene.background = new THREE.Color(skyColors[skyColorIndex]);
+            if (fogEnabled) scene.fog = new THREE.Fog(skyColors[skyColorIndex], 50, 200);
+        }
+        
+        function adminSpawnBuilding() {
+            const x = player.position.x + (Math.random() - 0.5) * 20;
+            const z = player.position.z + (Math.random() - 0.5) * 20;
+            const h = 10 + Math.random() * 20;
+            const colors = [0xe74c3c, 0x3498db, 0x9b59b6, 0xf39c12, 0x1abc9c, 0xe91e63];
+            createBuilding(x, 0, z, 8, h, 8, colors[Math.floor(Math.random() * colors.length)]);
+        }
+        
+        function adminSpawnTree() {
+            const x = player.position.x + (Math.random() - 0.5) * 20;
+            const z = player.position.z + (Math.random() - 0.5) * 20;
+            createTree(x, 0, z);
+        }
+        
+        function adminSpawnPlatform() {
+            const x = player.position.x + (Math.random() - 0.5) * 10;
+            const y = player.position.y + 2;
+            const z = player.position.z + (Math.random() - 0.5) * 10;
+            const colors = [0x1abc9c, 0xe91e63, 0x00bcd4, 0xffd700, 0x9b59b6];
+            createPlatform(x, y, z, 5, 1, 5, colors[Math.floor(Math.random() * colors.length)]);
+        }
+        
+        function adminClearWorld() {
+            if (confirm('Limpar todos os objetos spawnados?')) {
+                const toRemove = [];
+                scene.children.forEach(obj => {
+                    if (obj.userData && (obj.userData.isCoin || obj.userData.spawned)) {
+                        toRemove.push(obj);
+                    }
+                });
+                toRemove.forEach(obj => scene.remove(obj));
+            }
+        }
+        
+        function adminTeleport(x, y, z) {
+            player.position.set(x, y, z);
+            velocity.set(0, 0, 0);
+        }
+        
+        function adminTeleportCustom() {
+            const x = parseFloat(document.getElementById('tp-x').value) || 0;
+            const y = parseFloat(document.getElementById('tp-y').value) || 5;
+            const z = parseFloat(document.getElementById('tp-z').value) || 0;
+            adminTeleport(x, y, z);
+        }
+        
+        function adminExplosion() {
+            const colors = [0xff0000, 0xff6600, 0xffff00, 0xffffff];
+            for (let i = 0; i < 50; i++) {
+                const particle = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.5, 0.5, 0.5),
+                    new THREE.MeshLambertMaterial({ color: colors[Math.floor(Math.random() * colors.length)] })
+                );
+                particle.position.copy(player.position);
+                particle.userData.velocity = new THREE.Vector3((Math.random()-0.5)*2, Math.random()*2, (Math.random()-0.5)*2);
+                particle.userData.isParticle = true;
+                scene.add(particle);
+                setTimeout(() => scene.remove(particle), 2000);
+            }
+        }
+        
+        function adminCoinRain() {
+            for (let i = 0; i < 30; i++) {
+                setTimeout(() => {
+                    createCoin(player.position.x + (Math.random()-0.5)*20, player.position.y + 20, player.position.z + (Math.random()-0.5)*20);
+                }, i * 100);
+            }
+        }
+        
+        function adminFireworks() {
+            const colors = [0xff0000, 0x00ff00, 0x0000ff, 0xffff00, 0xff00ff, 0x00ffff];
+            for (let f = 0; f < 5; f++) {
+                setTimeout(() => {
+                    for (let i = 0; i < 20; i++) {
+                        const particle = new THREE.Mesh(
+                            new THREE.SphereGeometry(0.2, 8, 8),
+                            new THREE.MeshBasicMaterial({ color: colors[Math.floor(Math.random() * colors.length)] })
+                        );
+                        particle.position.set(
+                            player.position.x + (Math.random()-0.5)*30,
+                            player.position.y + 15 + Math.random()*10,
+                            player.position.z + (Math.random()-0.5)*30
+                        );
+                        particle.userData.velocity = new THREE.Vector3((Math.random()-0.5)*0.5, (Math.random()-0.5)*0.5, (Math.random()-0.5)*0.5);
+                        particle.userData.isParticle = true;
+                        scene.add(particle);
+                        setTimeout(() => scene.remove(particle), 1500);
+                    }
+                }, f * 500);
+            }
+        }
+        
+        function adminToggleMatrix() {
+            matrixMode = !matrixMode;
+            document.getElementById('matrix-btn').textContent = matrixMode ? '🕶️ Matrix: ON' : '🕶️ Matrix: OFF';
+        }
+        
+        function adminToggleParty() {
+            partyMode = !partyMode;
+            document.getElementById('party-btn').textContent = partyMode ? '🎉 Modo Festa: ON' : '🎉 Modo Festa: OFF';
+        }
+        
+        function adminToggleEarthquake() {
+            earthquakeMode = !earthquakeMode;
+            document.getElementById('earthquake-btn').textContent = earthquakeMode ? '🌋 Terremoto: ON' : '🌋 Terremoto: OFF';
+        }
+        
+        function adminSaveGame() {
+            const saveData = { coins, gems, equippedItems, clothingItems };
+            localStorage.setItem('blockworld_save', JSON.stringify(saveData));
+            alert('Jogo salvo!');
+        }
+        
+        function adminLoadGame() {
+            const saveData = localStorage.getItem('blockworld_save');
+            if (saveData) {
+                const data = JSON.parse(saveData);
+                coins = data.coins || 1250;
+                gems = data.gems || 50;
+                equippedItems = data.equippedItems || equippedItems;
+                Object.assign(clothingItems, data.clothingItems || {});
+                updateCurrencyDisplay();
+                alert('Jogo carregado!');
+            } else {
+                alert('Nenhum save encontrado!');
+            }
+        }
+        
+        function adminScreenshot() {
+            renderer.render(scene, camera);
+            const link = document.createElement('a');
+            link.download = 'blockworld_screenshot.png';
+            link.href = renderer.domElement.toDataURL('image/png');
+            link.click();
+        }
+        
+        function adminToggleFPS() {
+            showFPS = !showFPS;
+            document.getElementById('fps-counter').style.display = showFPS ? 'block' : 'none';
+            document.getElementById('fps-btn').textContent = showFPS ? '📊 FPS: ON' : '📊 FPS: OFF';
+        }
+        
+        function adminReset() {
+            if (confirm('Tem certeza? Isso vai resetar tudo!')) {
+                coins = 1250; gems = 50;
+                flyMode = false; speedMultiplier = 1; superJump = false; godMode = false;
+                invisibleMode = false; giantMode = false; miniMode = false; noClipMode = false;
+                rainbowMode = false; nightMode = false; lowGravity = false; matrixMode = false;
+                partyMode = false; earthquakeMode = false; infiniteCoins = false;
+                player.scale.set(1,1,1);
+                player.children.forEach(child => { if(child.material) { child.material.opacity = 1; child.material.transparent = false; }});
+                scene.background = new THREE.Color(0x87CEEB);
+                scene.fog = new THREE.Fog(0x87CEEB, 50, 200);
+                Object.keys(clothingItems).forEach(category => {
+                    clothingItems[category].forEach((item, index) => { item.owned = index === 0; });
+                });
+                updateCurrencyDisplay();
+                player.position.set(0, 2, 5);
+                // Reset all buttons
+                document.getElementById('fly-btn').textContent = '🦅 Voar: OFF';
+                document.getElementById('speed-btn').textContent = '⚡ Velocidade: 1x';
+                document.getElementById('jump-btn').textContent = '🚀 Super Pulo: OFF';
+                document.getElementById('god-btn').textContent = '👑 Modo Deus: OFF';
+                document.getElementById('invisible-btn').textContent = '👻 Invisível: OFF';
+                document.getElementById('giant-btn').textContent = '🗿 Gigante: OFF';
+                document.getElementById('mini-btn').textContent = '🐜 Mini: OFF';
+                document.getElementById('noclip-btn').textContent = '👤 NoClip: OFF';
+                document.getElementById('rainbow-btn').textContent = '🌈 Arco-Íris: OFF';
+                document.getElementById('daynight-btn').textContent = '🌙 Noite: OFF';
+                document.getElementById('gravity-btn').textContent = '🌙 Baixa Gravidade: OFF';
+                document.getElementById('matrix-btn').textContent = '🕶️ Matrix: OFF';
+                document.getElementById('party-btn').textContent = '🎉 Modo Festa: OFF';
+                document.getElementById('earthquake-btn').textContent = '🌋 Terremoto: OFF';
+                document.getElementById('infinite-btn').textContent = '∞ Moedas Infinitas: OFF';
+            }
+        }
+        
+        function updateCurrencyDisplay() {
+            document.getElementById('coins').textContent = coins.toLocaleString();
+            document.getElementById('gems').textContent = gems;
+            document.getElementById('shop-coins').textContent = coins.toLocaleString();
+            document.getElementById('shop-gems').textContent = gems;
+        }
+
+        // Mobile Mode Toggle
+        let manualMobileMode = null; // null = auto, true = on, false = off
+
+        function toggleMobileMode() {
+            if (manualMobileMode === null) manualMobileMode = true;
+            else if (manualMobileMode === true) manualMobileMode = false;
+            else manualMobileMode = null;
+            
+            updateMobileVisibility();
+        }
+
+        function updateMobileVisibility() {
+            const statusText = document.getElementById('mobile-mode-status');
+            const mobileControls = document.getElementById('mobile-controls');
+            
+            // Determine actual state
+            const autoMobile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (window.innerWidth <= 768);
+            const active = manualMobileMode !== null ? manualMobileMode : autoMobile;
+            
+            isMobile = active;
+            
+            if (active) {
+                mobileControls.style.display = 'block';
+                document.body.classList.add('force-mobile');
+                statusText.textContent = manualMobileMode === null ? 'Auto (ON)' : 'ON';
+                isLocked = true;
+            } else {
+                mobileControls.style.display = 'none';
+                document.body.classList.remove('force-mobile');
+                statusText.textContent = manualMobileMode === null ? 'Auto (OFF)' : 'OFF';
+            }
+        }
+
+        // Check if mobile
+        function checkMobile() {
+            updateMobileVisibility();
+        }
+
+        // Initialize Loading
+        function initLoading() {
+            const loadBar = document.getElementById('load-bar');
+            const loadText = document.getElementById('load-text');
+            const messages = ["Conectando...", "Carregando mundo...", "Preparando...", "Quase pronto..."];
+            
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += Math.random() * 20 + 10;
+                if (progress > 100) progress = 100;
+                
+                loadBar.style.width = progress + '%';
+                loadText.textContent = messages[Math.floor(progress / 30)] || messages[messages.length - 1];
+                
+                if (progress >= 100) {
+                    clearInterval(interval);
+                    setTimeout(() => {
+                        document.getElementById('loading-screen').style.opacity = '0';
+                        setTimeout(() => {
+                            document.getElementById('loading-screen').style.display = 'none';
+                            showUI();
+                        }, 500);
+                    }, 300);
+                }
+            }, 150);
+        }
+
+        function showUI() {
+            document.getElementById('top-bar').style.opacity = '1';
+            document.getElementById('menu-buttons').style.opacity = '1';
+            document.getElementById('players-list').style.opacity = '1';
+            document.getElementById('controls-info').style.opacity = '1';
+            document.getElementById('crosshair').style.opacity = '1';
+            document.getElementById('version-number').style.opacity = '1';
+            updatePlayersList();
+        }
+
+        // Three.js Setup
+        function init() {
+            checkMobile();
+            
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x87CEEB);
+            scene.fog = new THREE.Fog(0x87CEEB, 50, 200);
+
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 5, 10);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            document.getElementById('game-container').appendChild(renderer.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(50, 100, 50);
+            directionalLight.castShadow = true;
+            scene.add(directionalLight);
+
+            clock = new THREE.Clock();
+            createWorld();
+            createPlayer();
+            setupControls();
+            setupMobileControls();
+            initLoading();
+            animate();
+        }
+
+        function createWorld() {
+            const groundGeometry = new THREE.PlaneGeometry(200, 200);
+            const groundMaterial = new THREE.MeshLambertMaterial({ color: 0x7cba5f });
+            const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+            ground.rotation.x = -Math.PI / 2;
+            ground.receiveShadow = true;
+            scene.add(ground);
+
+            createPlatform(0, 0.5, 0, 15, 1, 15, 0x888888);
+            createBuilding(-30, 0, -30, 10, 20, 10, 0xe74c3c);
+            createBuilding(30, 0, -30, 8, 15, 8, 0x3498db);
+            createBuilding(-30, 0, 30, 12, 25, 12, 0x9b59b6);
+            createBuilding(30, 0, 30, 10, 18, 10, 0xf39c12);
+
+            createPlatform(-15, 3, 0, 6, 1, 6, 0x1abc9c);
+            createPlatform(15, 5, 0, 6, 1, 6, 0xe91e63);
+            createPlatform(0, 7, -15, 6, 1, 6, 0x00bcd4);
+
+            for (let i = 0; i < 15; i++) {
+                const x = (Math.random() - 0.5) * 150;
+                const z = (Math.random() - 0.5) * 150;
+                if (Math.abs(x) > 20 || Math.abs(z) > 20) createTree(x, 0, z);
+            }
+
+            for (let i = 0; i < 10; i++) {
+                createCoin((Math.random() - 0.5) * 80, 2, (Math.random() - 0.5) * 80);
+            }
+        }
+
+        function createPlatform(x, y, z, w, h, d, color) {
+            const geometry = new THREE.BoxGeometry(w, h, d);
+            const material = new THREE.MeshLambertMaterial({ color });
+            const platform = new THREE.Mesh(geometry, material);
+            platform.position.set(x, y, z);
+            platform.castShadow = true;
+            platform.receiveShadow = true;
+            scene.add(platform);
+        }
+
+        function createBuilding(x, y, z, w, h, d, color) {
+            const geometry = new THREE.BoxGeometry(w, h, d);
+            const material = new THREE.MeshLambertMaterial({ color });
+            const building = new THREE.Mesh(geometry, material);
+            building.position.set(x, y + h/2, z);
+            building.castShadow = true;
+            scene.add(building);
+        }
+
+        function createTree(x, y, z) {
+            const trunk = new THREE.Mesh(new THREE.BoxGeometry(1, 4, 1), new THREE.MeshLambertMaterial({ color: 0x8B4513 }));
+            trunk.position.set(x, y + 2, z);
+            scene.add(trunk);
+
+            const leaves = new THREE.Mesh(new THREE.BoxGeometry(4, 4, 4), new THREE.MeshLambertMaterial({ color: 0x228B22 }));
+            leaves.position.set(x, y + 6, z);
+            scene.add(leaves);
+        }
+
+        function createCoin(x, y, z) {
+            const coin = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.5, 0.5, 0.1, 16),
+                new THREE.MeshLambertMaterial({ color: 0xffd700, emissive: 0xffd700, emissiveIntensity: 0.3 })
+            );
+            coin.position.set(x, y, z);
+            coin.rotation.x = Math.PI / 2;
+            coin.userData.isCoin = true;
+            coin.userData.originalY = y;
+            scene.add(coin);
+        }
+
+        function createPlayer() {
+            player = new THREE.Group();
+            
+            // Grupo principal para o corpo para facilitar animação de respiração
+            const bodyGroup = new THREE.Group();
+            bodyGroup.name = 'bodyGroup';
+            player.add(bodyGroup);
+
+            const body = new THREE.Mesh(new THREE.BoxGeometry(1.5, 2, 1), new THREE.MeshLambertMaterial({ color: playerAppearance.body }));
+            body.position.y = 1;
+            body.name = 'body';
+            bodyGroup.add(body);
+
+            const head = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.2, 1.2), new THREE.MeshLambertMaterial({ color: playerAppearance.head }));
+            head.position.y = 2.6;
+            head.name = 'head';
+            bodyGroup.add(head);
+
+            const eyeMaterial = new THREE.MeshLambertMaterial({ color: 0x000000 });
+            const leftEye = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.1), eyeMaterial);
+            leftEye.position.set(-0.3, 2.7, -0.6);
+            bodyGroup.add(leftEye);
+            const rightEye = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.1), eyeMaterial);
+            rightEye.position.set(0.3, 2.7, -0.6);
+            bodyGroup.add(rightEye);
+
+            // Membros com pivots no topo
+            const armMaterial = new THREE.MeshLambertMaterial({ color: playerAppearance.head });
+            const legMaterial = new THREE.MeshLambertMaterial({ color: playerAppearance.legs });
+
+            // Braço Esquerdo
+            const leftArmPivot = new THREE.Group();
+            leftArmPivot.position.set(-1, 1.8, 0);
+            leftArmPivot.name = 'leftArmPivot';
+            bodyGroup.add(leftArmPivot);
+            const leftArm = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.5, 0.5), armMaterial);
+            leftArm.position.y = -0.75;
+            leftArm.name = 'leftArm';
+            leftArmPivot.add(leftArm);
+
+            // Braço Direito
+            const rightArmPivot = new THREE.Group();
+            rightArmPivot.position.set(1, 1.8, 0);
+            rightArmPivot.name = 'rightArmPivot';
+            bodyGroup.add(rightArmPivot);
+            const rightArm = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.5, 0.5), armMaterial);
+            rightArm.position.y = -0.75;
+            rightArm.name = 'rightArm';
+            rightArmPivot.add(rightArm);
+
+            // Perna Esquerda
+            const leftLegPivot = new THREE.Group();
+            leftLegPivot.position.set(-0.4, 0, 0);
+            leftLegPivot.name = 'leftLegPivot';
+            player.add(leftLegPivot);
+            const leftLeg = new THREE.Mesh(new THREE.BoxGeometry(0.6, 1.5, 0.6), legMaterial);
+            leftLeg.position.y = -0.75;
+            leftLeg.name = 'leftLeg';
+            leftLegPivot.add(leftLeg);
+
+            // Perna Direito
+            const rightLegPivot = new THREE.Group();
+            rightLegPivot.position.set(0.4, 0, 0);
+            rightLegPivot.name = 'rightLegPivot';
+            player.add(rightLegPivot);
+            const rightLeg = new THREE.Mesh(new THREE.BoxGeometry(0.6, 1.5, 0.6), legMaterial);
+            rightLeg.position.y = -0.75;
+            rightLeg.name = 'rightLeg';
+            rightLegPivot.add(rightLeg);
+
+            player.position.set(0, 2, 5);
+            scene.add(player);
+        }
+        
+        function updatePlayerAppearance() {
+            const bodyGroup = player.getObjectByName('bodyGroup');
+            if (bodyGroup) {
+                bodyGroup.children.forEach(child => {
+                    if (child.name === 'body') child.material.color.setHex(playerAppearance.body);
+                    else if (child.name === 'head') child.material.color.setHex(playerAppearance.head);
+                    else if (child.name === 'leftArmPivot') child.children[0].material.color.setHex(playerAppearance.head);
+                    else if (child.name === 'rightArmPivot') child.children[0].material.color.setHex(playerAppearance.head);
+                });
+            }
+            const leftLegPivot = player.getObjectByName('leftLegPivot');
+            const rightLegPivot = player.getObjectByName('rightLegPivot');
+            if (leftLegPivot) leftLegPivot.children[0].material.color.setHex(playerAppearance.legs);
+            if (rightLegPivot) rightLegPivot.children[0].material.color.setHex(playerAppearance.legs);
+        }
+
+        function updatePlayersList() {
+            document.getElementById('players-container').innerHTML = `
+                <div class="flex items-center gap-2 p-2 bg-gray-800 rounded-lg">
+                    <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                    <span class="text-white">Você</span>
+                    <span class="text-gray-400 text-xs ml-auto">Host</span>
+                </div>
+            `;
+        }
+
+        // Mobile Controls Setup
+        function setupMobileControls() {
+            const joystickBase = document.getElementById('joystick-base');
+            const joystickStick = document.getElementById('joystick-stick');
+            const jumpButton = document.getElementById('jump-button');
+            
+            let joystickTouchId = null;
+            
+            // Botões de Menu
+            ['btn-wardrobe', 'btn-shop', 'btn-admin'].forEach(id => {
+                const btn = document.getElementById(id);
+                btn.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (id === 'btn-wardrobe') openWardrobe();
+                    if (id === 'btn-shop') openShop();
+                    if (id === 'btn-admin') openAdminLogin();
+                }, { passive: false });
+            });
+
+            // ANALÓGICO (TOUCH + MOUSE)
+            const startJoystick = (e) => {
+                if (modalOpen) return;
+                const input = e.touches ? e.touches[0] : e;
+                joystickActive = true;
+                if (e.touches) joystickTouchId = e.touches[0].identifier;
+                handleJoystickMove(input);
+            };
+
+            const moveJoystick = (e) => {
+                if (!joystickActive) return;
+                if (e.touches) {
+                    for (let i = 0; i < e.touches.length; i++) {
+                        if (e.touches[i].identifier === joystickTouchId) {
+                            handleJoystickMove(e.touches[i]);
+                        }
+                    }
+                } else {
+                    handleJoystickMove(e);
+                }
+            };
+
+            const stopJoystick = () => {
+                joystickActive = false;
+                joystickTouchId = null;
+                joystickData = { x: 0, y: 0 };
+                joystickStick.style.transform = 'translate(-50%, -50%)';
+            };
+
+            joystickBase.addEventListener('touchstart', (e) => { e.preventDefault(); startJoystick(e); }, { passive: false });
+            joystickBase.addEventListener('mousedown', startJoystick);
+            
+            document.addEventListener('touchmove', (e) => { if (joystickActive) e.preventDefault(); moveJoystick(e); }, { passive: false });
+            document.addEventListener('mousemove', moveJoystick);
+            
+            document.addEventListener('touchend', stopJoystick);
+            document.addEventListener('mouseup', stopJoystick);
+
+            function handleJoystickMove(touch) {
+                const rect = joystickBase.getBoundingClientRect();
+                const centerX = rect.left + rect.width / 2;
+                const centerY = rect.top + rect.height / 2;
+                
+                let dx = touch.clientX - centerX;
+                let dy = touch.clientY - centerY;
+                
+                const maxRadius = rect.width / 2;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance > maxRadius) {
+                    dx = (dx / distance) * maxRadius;
+                    dy = (dy / distance) * maxRadius;
+                }
+                
+                joystickData.x = dx / maxRadius;
+                joystickData.y = dy / maxRadius;
+                joystickStick.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+            }
+
+            // BOTÃO DE PULAR (CORREÇÃO TOTAL)
+            const handleJump = (e) => {
+                if (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+                
+                if (modalOpen) return;
+                
+                // Pulo
+                if (canJump || flyMode) {
+                    velocity.y = superJump ? 35 : 15;
+                    canJump = false;
+                    
+                    // Feedback visual
+                    jumpButton.style.background = "linear-gradient(180deg, #ff6666 0%, #ff0000 100%)";
+                    jumpButton.style.transform = "scale(0.9) translateY(5px)";
+                    setTimeout(() => {
+                        jumpButton.style.background = "linear-gradient(180deg, #ff4d4d 0%, #cc0000 100%)";
+                        jumpButton.style.transform = "scale(1) translateY(0px)";
+                    }, 100);
+                }
+            };
+
+            jumpButton.addEventListener('touchstart', handleJump, { passive: false });
+            jumpButton.addEventListener('mousedown', handleJump);
+
+            // CAMERA TOUCH (Arraste)
+            let cameraTouchId = null;
+            let lastX, lastY;
+
+            document.addEventListener('touchstart', (e) => {
+                if (modalOpen) return;
+                const touch = e.changedTouches[0];
+                
+                // Ignora se for na área do joystick ou botões
+                if (touch.clientX < 220 && touch.clientY > window.innerHeight - 220) return;
+                if (touch.clientX > window.innerWidth - 180 && touch.clientY > window.innerHeight - 380) return;
+
+                if (cameraTouchId === null) {
+                    cameraTouchId = touch.identifier;
+                    lastX = touch.clientX;
+                    lastY = touch.clientY;
+                }
+            }, { passive: true });
+
+            document.addEventListener('touchmove', (e) => {
+                if (cameraTouchId === null) return;
+                
+                for (let i = 0; i < e.touches.length; i++) {
+                    if (e.touches[i].identifier === cameraTouchId) {
+                        const touch = e.touches[i];
+                        const dx = touch.clientX - lastX;
+                        const dy = touch.clientY - lastY;
+                        
+                        player.rotation.y -= dx * 0.008;
+                        cameraRotation.x -= dy * 0.008;
+                        // Correção da trava de câmera:
+                        cameraRotation.x = Math.max(-1.2, Math.min(1.2, cameraRotation.x));
+                        
+                        lastX = touch.clientX;
+                        lastY = touch.clientY;
+                        break;
+                    }
+                }
+            }, { passive: false });
+
+            document.addEventListener('touchend', (e) => {
+                for (let i = 0; i < e.changedTouches.length; i++) {
+                    if (e.changedTouches[i].identifier === cameraTouchId) {
+                        cameraTouchId = null;
+                    }
+                }
+            });
+        }
+
+        function setupControls() {
+            renderer.domElement.addEventListener('click', () => {
+                if (!modalOpen && !isMobile) renderer.domElement.requestPointerLock();
+            });
+
+            document.addEventListener('pointerlockchange', () => {
+                isLocked = document.pointerLockElement === renderer.domElement;
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (!isLocked || modalOpen) return;
+                player.rotation.y -= e.movementX * 0.002;
+                cameraRotation.x -= e.movementY * 0.002;
+                cameraRotation.x = Math.max(-Math.PI / 3, Math.min(Math.PI / 3, cameraRotation.x));
+            });
+
+            document.addEventListener('keydown', (e) => {
+                if (modalOpen) {
+                    if (e.code === 'Escape') { closeWardrobe(); closeShop(); closeAdminLogin(); closeAdminPanel(); }
+                    return;
+                }
+                switch (e.code) {
+                    case 'KeyW': moveForward = true; break;
+                    case 'KeyS': moveBackward = true; break;
+                    case 'KeyA': moveLeft = true; break;
+                    case 'KeyD': moveRight = true; break;
+                    case 'Space':
+                        if (canJump || flyMode) { velocity.y = superJump ? 35 : 15; canJump = false; }
+                        break;
+                    case 'ShiftLeft':
+                        if (flyMode) velocity.y = -15;
+                        break;
+                    case 'KeyG': openWardrobe(); break;
+                    case 'KeyL': openShop(); break;
+                    case 'KeyP': openAdminLogin(); break;
+                }
+            });
+
+            document.addEventListener('keyup', (e) => {
+                switch (e.code) {
+                    case 'KeyW': moveForward = false; break;
+                    case 'KeyS': moveBackward = false; break;
+                    case 'KeyA': moveLeft = false; break;
+                    case 'KeyD': moveRight = false; break;
+                    case 'ShiftLeft': if (flyMode) velocity.y = 0; break;
+                }
+            });
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+        }
+        
+        // Wardrobe Functions
+        function openWardrobe() {
+            modalOpen = true;
+            document.exitPointerLock();
+            document.getElementById('wardrobe-modal').style.display = 'flex';
+            renderWardrobeItems();
+        }
+        
+        function closeWardrobe() {
+            modalOpen = false;
+            document.getElementById('wardrobe-modal').style.display = 'none';
+        }
+        
+        function switchWardrobeTab(tab) {
+            currentWardrobeTab = tab;
+            ['body', 'legs', 'head', 'accessories'].forEach(t => {
+                const btn = document.getElementById('tab-' + t);
+                if (t === tab) { btn.classList.add('active'); btn.classList.remove('bg-gray-800', 'text-gray-400'); btn.classList.add('text-white'); }
+                else { btn.classList.remove('active'); btn.classList.add('bg-gray-800', 'text-gray-400'); }
+            });
+            renderWardrobeItems();
+        }
+        
+        function renderWardrobeItems() {
+            const container = document.getElementById('wardrobe-items');
+            const items = clothingItems[currentWardrobeTab].filter(item => item.owned);
+            const equippedKey = currentWardrobeTab === 'accessories' ? 'accessory' : currentWardrobeTab;
+            
+            container.innerHTML = items.map(item => `
+                <div class="item-card p-3 ${equippedItems[equippedKey] === item.id ? 'selected' : ''}" onclick="equipItem('${currentWardrobeTab}', '${item.id}')">
+                    <div class="w-full h-16 rounded-lg mb-2 flex items-center justify-center" style="background-color: ${item.color ? '#' + item.color.toString(16).padStart(6, '0') : '#333'}">
+                        ${!item.color ? '<span class="text-2xl">❌</span>' : ''}
+                    </div>
+                    <p class="text-white font-bold text-xs text-center">${item.name}</p>
+                </div>
+            `).join('');
+        }
+        
+        function equipItem(category, itemId) {
+            const equippedKey = category === 'accessories' ? 'accessory' : category;
+            equippedItems[equippedKey] = itemId;
+            const item = clothingItems[category].find(i => i.id === itemId);
+            if (item && item.color !== undefined && category !== 'accessories') {
+                playerAppearance[category] = item.color;
+            }
+            updatePlayerAppearance();
+            renderWardrobeItems();
+        }
+        
+        // Shop Functions
+        function openShop() {
+            modalOpen = true;
+            document.exitPointerLock();
+            document.getElementById('shop-modal').style.display = 'flex';
+            updateCurrencyDisplay();
+            renderShopItems();
+        }
+        
+        function closeShop() {
+            modalOpen = false;
+            document.getElementById('shop-modal').style.display = 'none';
+        }
+        
+        function switchShopTab(tab) {
+            currentShopTab = tab;
+            ['body', 'legs', 'head', 'accessories'].forEach(t => {
+                const btn = document.getElementById('shop-tab-' + t);
+                if (t === tab) { btn.classList.add('active'); btn.classList.remove('bg-gray-800', 'text-gray-400'); btn.classList.add('text-white'); }
+                else { btn.classList.remove('active'); btn.classList.add('bg-gray-800', 'text-gray-400'); }
+            });
+            renderShopItems();
+        }
+        
+        function renderShopItems() {
+            const container = document.getElementById('shop-items');
+            container.innerHTML = clothingItems[currentShopTab].map(item => {
+                const currencyIcon = item.currency === 'coins' ? '🪙' : '💎';
+                const currencyColor = item.currency === 'coins' ? 'text-yellow-400' : 'text-cyan-400';
+                return `
+                    <div class="item-card p-3 ${item.owned ? 'opacity-60' : ''}" onclick="${item.owned ? '' : `buyItem('${currentShopTab}', '${item.id}')`}">
+                        <div class="w-full h-16 rounded-lg mb-2 flex items-center justify-center relative" style="background-color: ${item.color ? '#' + item.color.toString(16).padStart(6, '0') : '#333'}">
+                            ${item.owned ? '<div class="absolute inset-0 bg-black/50 rounded-lg flex items-center justify-center"><span class="text-xl">✓</span></div>' : ''}
+                        </div>
+                        <p class="text-white font-bold text-xs text-center">${item.name}</p>
+                        ${item.owned ? '<p class="text-green-400 text-xs text-center">✓</p>' : `<p class="${currencyColor} text-xs text-center font-bold">${currencyIcon} ${item.price}</p>`}
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        function buyItem(category, itemId) {
+            const item = clothingItems[category].find(i => i.id === itemId);
+            if (!item || item.owned) return;
+            const canAfford = item.currency === 'coins' ? coins >= item.price : gems >= item.price;
+            if (!canAfford) return;
+            if (item.currency === 'coins') coins -= item.price;
+            else gems -= item.price;
+            item.owned = true;
+            updateCurrencyDisplay();
+            renderShopItems();
+            document.getElementById('purchase-item-name').textContent = item.name;
+            document.getElementById('purchase-notification').style.display = 'block';
+            setTimeout(() => { document.getElementById('purchase-notification').style.display = 'none'; }, 2000);
+        }
+
+        function updateCoins() {
+            scene.children.forEach(obj => {
+                if (obj.userData && obj.userData.isCoin) {
+                    obj.rotation.z += 0.02;
+                    obj.position.y = obj.userData.originalY + Math.sin(Date.now() * 0.003) * 0.3;
+                    if (player.position.distanceTo(obj.position) < 2) {
+                        scene.remove(obj);
+                        coins += 10;
+                        updateCurrencyDisplay();
+                        setTimeout(() => createCoin((Math.random() - 0.5) * 80, 2, (Math.random() - 0.5) * 80), 5000);
+                    }
+                }
+            });
+        }
+
+        let lastTime = performance.now();
+        let frameCount = 0;
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = clock.getDelta();
+            const effectiveDelta = matrixMode ? delta * 0.2 : delta;
+            const time = performance.now() * 0.001;
+
+            // FPS counter
+            frameCount++;
+            if (performance.now() - lastTime >= 1000) {
+                if (showFPS) document.getElementById('fps-value').textContent = frameCount + ' FPS';
+                frameCount = 0;
+                lastTime = performance.now();
+            }
+            
+            // Animações do Personagem
+            const bodyGroup = player.getObjectByName('bodyGroup');
+            const lArm = player.getObjectByName('leftArmPivot');
+            const rArm = player.getObjectByName('rightArmPivot');
+            const lLeg = player.getObjectByName('leftLegPivot');
+            const rLeg = player.getObjectByName('rightLegPivot');
+            const head = player.getObjectByName('head');
+
+            const isMoving = Math.abs(velocity.x) > 0.1 || Math.abs(velocity.z) > 0.1;
+            const minY = giantMode ? 3 : (miniMode ? 1.5 : 2);
+            const isJumping = player.position.y > minY + 0.1;
+
+            if (isMoving && !isJumping) {
+                // Animação de caminhada
+                const walkSpeed = 10 * speedMultiplier;
+                const swing = Math.sin(time * walkSpeed) * 0.5;
+                
+                lArm.rotation.x = swing;
+                rArm.rotation.x = -swing;
+                lLeg.rotation.x = -swing;
+                rLeg.rotation.x = swing;
+                
+                bodyGroup.position.y = Math.abs(Math.cos(time * walkSpeed)) * 0.1;
+            } else if (isJumping) {
+                // Animação de pulo/queda
+                lArm.rotation.x = -Math.PI / 4;
+                rArm.rotation.x = -Math.PI / 4;
+                lLeg.rotation.x = Math.PI / 8;
+                rLeg.rotation.x = -Math.PI / 8;
+                bodyGroup.position.y = 0;
+            } else {
+                // Animação Idle (Respirando)
+                const idleSpeed = 2;
+                const idleSwing = Math.sin(time * idleSpeed) * 0.05;
+                
+                lArm.rotation.x = idleSwing;
+                rArm.rotation.x = -idleSwing;
+                lLeg.rotation.x = 0;
+                rLeg.rotation.x = 0;
+                
+                bodyGroup.position.y = idleSwing * 0.5;
+                if (head) head.rotation.x = idleSwing * 0.5;
+            }
+
+            // Rainbow mode
+            if (rainbowMode) {
+                const hue = (Date.now() * 0.001) % 1;
+                const color = new THREE.Color().setHSL(hue, 1, 0.5);
+                // Atualiza cores recursivamente
+                player.traverse(child => {
+                    if (child.material && (child.name || child.parent.name.includes('Pivot'))) {
+                        child.material.color.copy(color);
+                    }
+                });
+            }
+            
+            // Party mode - flashing background
+            if (partyMode) {
+                const hue = (Date.now() * 0.002) % 1;
+                scene.background = new THREE.Color().setHSL(hue, 0.5, 0.3);
+            }
+            
+            // Earthquake mode
+            if (earthquakeMode) {
+                camera.position.x += (Math.random() - 0.5) * 0.3;
+                camera.position.y += (Math.random() - 0.5) * 0.2;
+            }
+            
+            // Update particles
+            scene.children.forEach(obj => {
+                if (obj.userData && obj.userData.isParticle && obj.userData.velocity) {
+                    obj.position.add(obj.userData.velocity);
+                    obj.userData.velocity.y -= 0.05;
+                }
+            });
+            
+            if ((isLocked || isMobile) && !modalOpen) {
+                velocity.x *= 0.85;
+                velocity.z *= 0.85;
+                const gravity = lowGravity ? 10 : 30;
+                if (!flyMode) velocity.y -= gravity * effectiveDelta;
+                
+                const speed = 20 * speedMultiplier;
+                
+                // Sistema de Movimento Unificado
+                if (joystickActive) {
+                    velocity.z = -joystickData.y * speed;
+                    velocity.x = joystickData.x * speed;
+                } else {
+                    // Teclado (WASD)
+                    direction.z = Number(moveForward) - Number(moveBackward);
+                    direction.x = Number(moveRight) - Number(moveLeft);
+                    if (direction.lengthSq() > 0) {
+                        direction.normalize();
+                        velocity.z = direction.z * speed;
+                        velocity.x = direction.x * speed;
+                    } else {
+                        // Se não houver input, a fricção (0.85) já aplicada acima reduzirá a velocidade a zero
+                    }
+                }
+                
+                // Aplica o movimento final (comum a todos os modos)
+                player.position.x += (velocity.x * effectiveDelta) * Math.cos(player.rotation.y) - (velocity.z * effectiveDelta) * Math.sin(player.rotation.y);
+                player.position.z -= (velocity.z * effectiveDelta) * Math.cos(player.rotation.y) + (velocity.x * effectiveDelta) * Math.sin(player.rotation.y);
+                player.position.y += velocity.y * effectiveDelta;
+                
+                const minY = giantMode ? 3 : (miniMode ? 1.5 : 2);
+                if (player.position.y < minY && !flyMode && !noClipMode) {
+                    player.position.y = minY;
+                    velocity.y = 0;
+                    canJump = true;
+                }
+                
+                if (!noClipMode) {
+                    player.position.x = Math.max(-95, Math.min(95, player.position.x));
+                    player.position.z = Math.max(-95, Math.min(95, player.position.z));
+                }
+                if (flyMode || noClipMode) player.position.y = Math.max(minY, Math.min(100, player.position.y));
+            }
+            
+            const cameraOffset = new THREE.Vector3(0, 4 + Math.sin(cameraRotation.x) * 3, 8 * Math.cos(cameraRotation.x));
+            cameraOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), player.rotation.y);
+            camera.position.copy(player.position).add(cameraOffset);
+            camera.lookAt(player.position.x, player.position.y + 2, player.position.z);
+            
+            updateCoins();
+            
+            // Infinite coins
+            if (infiniteCoins && coins < 999999) { coins = 999999; gems = 9999; updateCurrencyDisplay(); }
+            
+            renderer.render(scene, camera);
+        }
+
+        init();
+    </script>
+</body>
+</html>
